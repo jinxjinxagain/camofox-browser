@@ -112,12 +112,22 @@ make reset
 # Just download binaries (without building)
 make fetch
 
+# Export an offline-loadable Docker image tarball after build
+make package
+
 # Override arch or version explicitly
 make up ARCH=x86_64
 make up VERSION=135.0.1 RELEASE=beta.24
 ```
 
 > **WARNING: Do not run `docker build` directly.** The Dockerfile uses bind mounts to pull pre-downloaded binaries from `dist/`. Always use `make up` (or `make fetch` then `make build`) -- it downloads the binaries first.
+
+`make package` writes `dist/camofox-browser-<version>-<arch>.tar.gz`. Copy it to another machine and load it with:
+
+```bash
+docker load -i dist/camofox-browser-135.0.1-aarch64.tar.gz
+docker run -d --restart unless-stopped --name camofox-browser -p 9377:9377 camofox-browser:135.0.1-aarch64
+```
 
 ### Fly.io
 

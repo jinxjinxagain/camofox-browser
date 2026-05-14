@@ -19,13 +19,14 @@ else
 endif
 
 IMAGE        := camofox-browser:$(VERSION)-$(ARCH)
+PACKAGE      := dist/camofox-browser-$(VERSION)-$(ARCH).tar.gz
 CAMOUFOX_ZIP := dist/camoufox-$(ARCH).zip
 YTDLP_BIN    := dist/yt-dlp-$(ARCH)
 
 CAMOUFOX_URL := https://github.com/daijro/camoufox/releases/download/v$(VERSION)-$(RELEASE)/camoufox-$(VERSION)-$(RELEASE)-lin.$(CAMOUFOX_ARCH).zip
 YTDLP_URL    := https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux$(YTDLP_ARCH)
 
-.PHONY: build build-arm64 build-x86 fetch fetch-arm64 fetch-x86 up down reset clean
+.PHONY: build build-arm64 build-x86 fetch fetch-arm64 fetch-x86 package load up down reset clean
 
 ## Build the Docker image for the current ARCH (default: x86_64)
 build: fetch
@@ -41,6 +42,16 @@ build-arm64:
 
 build-x86:
 	$(MAKE) build ARCH=x86_64
+
+## Export the built image as a portable tarball for offline/remote loading
+package: build
+	docker save $(IMAGE) | gzip -c > $(PACKAGE)
+	@echo "Packaged $(IMAGE) -> $(PACKAGE)"
+	@echo "Load it on another host with: docker load -i $(PACKAGE)"
+
+## Load a packaged image from dist/ into the local Docker daemon
+load:
+	gzip -dc $(PACKAGE) | docker load
 
 ## Download both binaries into dist/ for the current ARCH
 fetch: $(CAMOUFOX_ZIP) $(YTDLP_BIN)
