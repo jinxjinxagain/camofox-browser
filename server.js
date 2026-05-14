@@ -943,7 +943,7 @@ async function launchBrowserInstance() {
     try {
       const options = await launchOptions({
         executable_path: externalCamoufox?.executablePath,
-        headless: useVirtualDisplay ? false : true,
+        headless: useVirtualDisplay ? false : CONFIG.headless,
         os: hostOS,
         humanize: true,
         enable_cache: true,
@@ -2745,6 +2745,8 @@ app.post('/tabs/:tabId/navigate', async (req, res) => {
         const navigateCurrentPage = async () => {
           tabState.lastRequestedUrl = targetUrl;
           const ac = tabState.navigateAbort = new AbortController();
+          // Bring tab to front so headed browser shows the navigation
+          await tabState.page.bringToFront();
           const gotoP = withPageLoadDuration('navigate', () => tabState.page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }));
           try {
             await Promise.race([
@@ -3220,6 +3222,7 @@ app.post('/tabs/:tabId/click', async (req, res) => {
         const y = box.y + box.height / 2;
         
         // Move mouse to element (triggers mouseover/mouseenter)
+        await tabState.page.bringToFront();
         await tabState.page.mouse.move(x, y);
         await tabState.page.waitForTimeout(50);
         
@@ -3796,9 +3799,10 @@ app.post('/tabs/:tabId/scroll', async (req, res) => {
     
     const isVertical = direction === 'up' || direction === 'down';
     const delta = (direction === 'up' || direction === 'left') ? -amount : amount;
+    await tabState.page.bringToFront();
     await tabState.page.mouse.wheel(isVertical ? 0 : delta, isVertical ? delta : 0);
     await tabState.page.waitForTimeout(300);
-    
+
     pluginEvents.emit('tab:scroll', { userId, tabId: req.params.tabId, direction, amount });
     res.json({ ok: true });
   } catch (err) {
