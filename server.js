@@ -3800,8 +3800,35 @@ app.post('/tabs/:tabId/scroll', async (req, res) => {
     const isVertical = direction === 'up' || direction === 'down';
     const delta = (direction === 'up' || direction === 'left') ? -amount : amount;
     await tabState.page.bringToFront();
+    const beforeScroll = await tabState.page.evaluate(() => ({
+      x: window.scrollX,
+      y: window.scrollY,
+    })).catch(() => null);
+    const viewport = tabState.page.viewportSize();
+    if (viewport) {
+      await tabState.page.mouse.move(Math.floor(viewport.width / 2), Math.floor(viewport.height / 2));
+    }
     await tabState.page.mouse.wheel(isVertical ? 0 : delta, isVertical ? delta : 0);
     await tabState.page.waitForTimeout(300);
+    if (beforeScroll) {
+      const afterScroll = await tabState.page.evaluate(() => ({
+        x: window.scrollX,
+        y: window.scrollY,
+      })).catch(() => null);
+      const unchanged = afterScroll && afterScroll.x === beforeScroll.x && afterScroll.y === beforeScroll.y;
+      if (unchanged) {
+        await tabState.page.evaluate(
+          ({ dx, dy }) => {
+            window.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
+          },
+          {
+            dx: isVertical ? 0 : delta,
+            dy: isVertical ? delta : 0,
+          },
+        );
+        await tabState.page.waitForTimeout(500);
+      }
+    }
 
     pluginEvents.emit('tab:scroll', { userId, tabId: req.params.tabId, direction, amount });
     res.json({ ok: true });
